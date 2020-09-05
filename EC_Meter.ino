@@ -58,6 +58,8 @@ int Ra=25; //Resistance of powering Pins
 int ECPin= A0;
 int ECGround=A1;
 int ECPower =A4;
+int pumpAB = 5;
+int pumpWater = 6;
  
 //*********** Converting to ppm [Learn to use EC it is much better**************//
 // Hana      [USA]        PPMconverion:  0.5
@@ -97,12 +99,18 @@ float Vin= 5;
 float Vdrop= 0;
 float Rc= 0;
 float buffer=0;
+float setEC = 1.0;
+String pumpABState = "OFF";
+boolean powerStatus = false;
  
  
 //*********************************Setup - runs Once and sets pins etc ******************************************************//
 void setup()
 {
-  Serial.begin(9600);
+  //Serial.begin(9600);
+  delay(3000); 
+  Serial.begin(57600);
+  //Serial.begin(115200);
   pinMode(TempProbeNegative , OUTPUT ); //seting ground pin as output for tmp probe
   digitalWrite(TempProbeNegative , LOW );//Seting it to ground so it can sink current
   pinMode(TempProbePossitive , OUTPUT );//ditto but for positive
@@ -111,6 +119,13 @@ void setup()
   pinMode(ECPower,OUTPUT);//Setting pin for sourcing current
   pinMode(ECGround,OUTPUT);//setting pin for sinking current
   digitalWrite(ECGround,LOW);//We can leave the ground connected permanantly
+
+  pinMode(13,OUTPUT);
+  /*****Pump*******/
+  pinMode(pumpAB,OUTPUT);
+  digitalWrite(pumpAB,HIGH);
+  //pinMode(pumpWater,OUTPUT)
+  //digitalWrite(pumpWater,LOW);
  
   delay(100);// gives sensor time to settle
   sensors.begin();
@@ -120,7 +135,7 @@ void setup()
   R1=(R1+Ra);// Taking into acount Powering Pin Resitance
  
   // Configure the serial port baud rate
-  //Serial.begin(57600);
+  
   // Attach the function which will respond to the JSON request from Tasmota
   slave.attach_FUNC_JSON(user_FUNC_JSON);
   // Attach the function which will be called when the Tasmota device sends data using SlaveSend command
@@ -139,6 +154,7 @@ void loop()
   GetEC();          //Calls Code to Go into GetEC() Loop [Below Main Loop] dont call this more that 1/5 hhz [once every five seconds] or you will polarise the water
   PrintReadings();  // Cals Print routine [below main loop]
   delay(5000); 
+  slave.loop();
 }
 //************************************** End Of Main Loop **********************************************************************//
  
@@ -164,11 +180,27 @@ void GetEC(){
   //*************Compensating For Temperaure********************//
   EC25  =  EC/ (1+ TemperatureCoef*(Temperature-25.0));
   ppm=(EC25)*(PPMconversion*1000);
+  //if(powerStatus){
+  if(true){
+    if(ppm>0&&EC25<setEC){
+      //Serial.println("EC25<setEC");
+      digitalWrite(pumpAB,LOW); //Low = ON
+      digitalWrite(13,HIGH);
+      pumpABState = "ON";
+    }else{
+      //Serial.println("EC25>setEC");
+      digitalWrite(pumpAB,HIGH);
+      pumpABState = "OFF";
+      digitalWrite(13,LOW);
+    }
+  }
+  
 }
 //************************** End OF EC Function ***************************//
  
 //***This Loop Is called From Main Loop- Prints to serial usefull info ***//
 void PrintReadings(){
+  /*
   Serial.print("Rc: ");
   Serial.print(Rc);
   Serial.print(" EC: ");
@@ -176,12 +208,16 @@ void PrintReadings(){
   Serial.print(" Simens  ");
   Serial.print(ppm);
   Serial.print(" ppm  ");
+  Serial.print(" PumpABState  ");
+  Serial.print(pumpABState);
+  Serial.print(" Temperature :");
   Serial.print(Temperature);
   Serial.println(" *C ");
-  char response[50];
-  sprintf(response,"{\"RC\": %u, \"EC\": %u, \"EC25\": %u, \"TDS\": %u, \"Temperature\": %u}", Rc, EC, EC25, ppm, Temperature);
+  */
+  char response[200];
+  sprintf(response,"{\"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
   slave.SendTele(response);
-  slave.loop();
+  //slave.loop();
   /*
   //********** Usued for Debugging ************
   Serial.print("Vdrop: ");
@@ -197,9 +233,11 @@ void user_FUNC_RECEIVE(char *data)
 {
   if (!strcmp(data, "ON")) { // SlaveSend ON
     //digitalWrite(LED_BUILTIN, HIGH);
+    powerStatus = true;
   }
   if (!strcmp(data, "OFF")) { // SlaveSend OFF
     //digitalWrite(LED_BUILTIN, LOW);
+    powerStatus = false;
   }
 }
 
@@ -211,7 +249,8 @@ void user_FUNC_RECEIVE(char *data)
 void user_FUNC_JSON(void)
 {
   uint8_t a = 0;
-  char myjson[100];
-  //sprintf(myjson,"{\"RC\": %u, \"EC\": %u, \"TDS\": %u, \"Temperature\": %u}", Rc, EC25, ppm, Temperature);
-  //slave.sendJSON(myjson);
+  char myjson[200];
+  sprintf(myjson,"{\"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
+  
+  slave.sendJSON(myjson);
 }

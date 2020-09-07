@@ -78,7 +78,8 @@ float TemperatureCoef = 0.019; //this changes depending on what chemical we are 
 //But If you get bad readings you can use the calibration script and fluid to get a better estimate for K
 //EU plug: K= 1.76
 //US Plug: K= 2.88
-float K=1.76;
+//float K=1.76;
+float K=1.71; //+0.05; //adjust 0.05
  
 //************ Temp Probe Related *********************************************//
 #define ONE_WIRE_BUS 10          // Data wire For Temp Probe is plugged into pin 10 on the Arduino
@@ -99,10 +100,11 @@ float Vin= 5;
 float Vdrop= 0;
 float Rc= 0;
 float buffer=0;
-float setEC = 1.0;
+float setEC = 2.0;
 String pumpABState = "OFF";
-boolean powerStatus = false;
- 
+boolean powerStatus = true;
+String powerState = "ON";
+char response[200];
  
 //*********************************Setup - runs Once and sets pins etc ******************************************************//
 void setup()
@@ -123,9 +125,9 @@ void setup()
   pinMode(13,OUTPUT);
   /*****Pump*******/
   pinMode(pumpAB,OUTPUT);
-  digitalWrite(pumpAB,HIGH);
-  //pinMode(pumpWater,OUTPUT)
-  //digitalWrite(pumpWater,LOW);
+  digitalWrite(pumpAB,HIGH); //HIGH = OFF
+  pinMode(pumpWater,OUTPUT);
+  digitalWrite(pumpWater,HIGH);//HIGH = OFF
  
   delay(100);// gives sensor time to settle
   sensors.begin();
@@ -175,13 +177,14 @@ void GetEC(){
   Vdrop= (Vin*raw)/1024.0;
   Rc=(Vdrop*R1)/(Vin-Vdrop);
   Rc=Rc-Ra; //acounting for Digital Pin Resitance
-  EC = 1000/(Rc*K);
+  EC = (1000/(Rc*K));
    
   //*************Compensating For Temperaure********************//
-  EC25  =  EC/ (1+ TemperatureCoef*(Temperature-25.0));
+  EC25  =  (EC/ (1+ TemperatureCoef*(Temperature-25.0)));
   ppm=(EC25)*(PPMconversion*1000);
   //if(powerStatus){
-  if(true){
+  if(powerState=="ON"){
+    digitalWrite(pumpWater,LOW);//Low = NO
     if(ppm>0&&EC25<setEC){
       //Serial.println("EC25<setEC");
       digitalWrite(pumpAB,LOW); //Low = ON
@@ -214,10 +217,9 @@ void PrintReadings(){
   Serial.print(Temperature);
   Serial.println(" *C ");
   */
-  char response[200];
-  sprintf(response,"{\"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
-  slave.SendTele(response);
-  //slave.loop();
+  
+  sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
+  slave.sendJSON(response);
   /*
   //********** Usued for Debugging ************
   Serial.print("Vdrop: ");
@@ -231,13 +233,20 @@ void PrintReadings(){
 }
 void user_FUNC_RECEIVE(char *data)
 {
-  if (!strcmp(data, "ON")) { // SlaveSend ON
-    //digitalWrite(LED_BUILTIN, HIGH);
-    powerStatus = true;
-  }
-  if (!strcmp(data, "OFF")) { // SlaveSend OFF
-    //digitalWrite(LED_BUILTIN, LOW);
-    powerStatus = false;
+
+  if (!strcmp(data, "status")) {
+    sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
+    slave.sendJSON(response);
+  }else{
+     if (!strcmp(data, "ON")) { // SlaveSend ON
+      powerStatus = true;
+      powerState = "ON";
+    }else if (!strcmp(data, "OFF")) { // SlaveSend OFF
+      powerStatus = false;
+      powerState = "OFF";
+    }else{
+      setEC = atoi(data);
+    } 
   }
 }
 
@@ -248,9 +257,6 @@ void user_FUNC_RECEIVE(char *data)
 
 void user_FUNC_JSON(void)
 {
-  uint8_t a = 0;
-  char myjson[200];
-  sprintf(myjson,"{\"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
-  
-  slave.sendJSON(myjson);
+  sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
+  slave.sendJSON(response);
 }

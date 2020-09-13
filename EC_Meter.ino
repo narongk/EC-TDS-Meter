@@ -104,7 +104,7 @@ float setEC = 2.0;
 String pumpABState = "OFF";
 boolean powerStatus = true;
 String powerState = "ON";
-char response[200];
+char response[100];
  
 //*********************************Setup - runs Once and sets pins etc ******************************************************//
 void setup()
@@ -191,11 +191,18 @@ void GetEC(){
       digitalWrite(13,HIGH);
       pumpABState = "ON";
     }else{
+      /******ปิด********/
       //Serial.println("EC25>setEC");
       digitalWrite(pumpAB,HIGH);
       pumpABState = "OFF";
       digitalWrite(13,LOW);
     }
+  }else{
+    /******ปิด********/
+    digitalWrite(pumpWater,HIGH);//Low = NO
+    digitalWrite(pumpAB,HIGH);
+    pumpABState = "OFF";
+    digitalWrite(13,LOW);
   }
   
 }
@@ -218,7 +225,7 @@ void PrintReadings(){
   Serial.println(" *C ");
   */
   
-  sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
+  sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Tmp\": %s, \"pAB\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
   slave.sendJSON(response);
   /*
   //********** Usued for Debugging ************
@@ -235,7 +242,7 @@ void user_FUNC_RECEIVE(char *data)
 {
 
   if (!strcmp(data, "status")) {
-    sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
+    sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Tmp\": %s, \"pAB\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
     slave.sendJSON(response);
   }else{
      if (!strcmp(data, "ON")) { // SlaveSend ON
@@ -257,6 +264,6 @@ void user_FUNC_RECEIVE(char *data)
 
 void user_FUNC_JSON(void)
 {
-  sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Temperature\": %s, \"PumpABState\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
-  slave.sendJSON(response);
+  //sprintf(response,"{\"power\": \"%s\", \"RC\": %s, \"EC\": %s, \"EC25\": %s, \"TDS\": %s, \"Tmp\": %s, \"PumpABState\": \"%s\"}", String(powerState).c_str(),String(Rc).c_str(), String(EC).c_str(), String(EC25).c_str(), String(ppm).c_str(), String(Temperature).c_str(),pumpABState.c_str());
+  //slave.sendJSON(response);
 }

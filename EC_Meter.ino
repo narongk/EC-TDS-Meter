@@ -66,7 +66,7 @@ int pumpWater = 6;
 // Eutech    [EU]          PPMconversion:  0.64
 //Tranchen  [Australia]  PPMconversion:  0.7
 // Why didnt anyone standardise this?
-float PPMconversion=0.7;
+float PPMconversion=0.5;
  
 //*************Compensating for temperature ************************************//
 //The value below will change depending on what chemical solution we are measuring
